@@ -24,8 +24,9 @@
   </developers>
 
   <modules>
-    <module>core</module>
+    <module>ktfmt</module>
   </modules>
+
   <scm>
     <connection>scm:git:https://github.com/facebook/ktfmt.git</connection>
     <developerConnection>scm:git:git@github.com:facebook/ktfmt.git</developerConnection>
