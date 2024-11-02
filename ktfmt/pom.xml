@@ -45,7 +45,7 @@
     </dependency>
     <dependency>
       <groupId>org.jetbrains.kotlin</groupId>
-      <artifactId>kotlin-compiler-embeddable</artifactId>
+      <artifactId>kotlin-compiler</artifactId>
       <version>${kotlin.version}</version>
     </dependency>
     <!-- https://mvnrepository.com/artifact/net.java.dev.jna/jna -->
