@@ -42,55 +42,14 @@ import org.jetbrains.kotlin.psi.psiUtil.startOffset
 
 object Formatter {
 
-  @JvmField
-  val META_FORMAT =
-      FormattingOptions(
-          blockIndent = 2,
-          continuationIndent = 4,
-          manageTrailingCommas = false,
-      )
-
-  @JvmField
-  val GOOGLE_FORMAT =
-      FormattingOptions(
-          maxWidth = 70,
-          blockIndent = 2,
-          continuationIndent = 2,
-      )
-
-  /** A format that attempts to reflect https://kotlinlang.org/docs/coding-conventions.html. */
-  @JvmField
-  val KOTLINLANG_FORMAT =
-      FormattingOptions(
-          blockIndent = 4,
-          continuationIndent = 4,
-      )
-
   private val MINIMUM_KOTLIN_VERSION = KotlinVersion(1, 4)
-
-  /**
-   * format formats the Kotlin code given in 'code' and returns it as a string. This method is
-   * accessed through Reflection.
-   */
-  @JvmStatic
-  @Throws(FormatterException::class, ParseError::class)
-  fun format(code: String): String = format(META_FORMAT, code)
-
-  /**
-   * format formats the Kotlin code given in 'code' with 'removeUnusedImports' and returns it as a
-   * string. This method is accessed through Reflection.
-   */
-  @JvmStatic
-  @Throws(FormatterException::class, ParseError::class)
-  fun format(code: String, removeUnusedImports: Boolean): String =
-      format(META_FORMAT.copy(removeUnusedImports = removeUnusedImports), code)
 
   /**
    * format formats the Kotlin code given in 'code' with the 'maxWidth' and returns it as a string.
    */
   @JvmStatic
   @Throws(FormatterException::class, ParseError::class)
-  fun format(options: FormattingOptions, code: String): String {
+  fun format(options: FormattingOptions, code: String, range: Range<Int>? = null): String {
     val (shebang, kotlinCode) =
         if (code.startsWith("#!")) {
           code.split("\n".toRegex(), limit = 2)
@@ -103,14 +62,15 @@ object Formatter {
         .let { convertLineSeparators(it) }
         .let { sortedAndDistinctImports(it) }
         .let { dropRedundantElements(it, options) }
-        .let { prettyPrint(it, options, "\n") }
+        .let { prettyPrint(it, options, range, "\n") }
         .let { addRedundantElements(it, options) }
         .let { convertLineSeparators(it, checkNotNull(Newlines.guessLineSeparator(kotlinCode))) }
         .let { if (shebang.isEmpty()) it else shebang + "\n" + it }
   }
 
+
   /** prettyPrint reflows 'code' using google-java-format's engine. */
-  private fun prettyPrint(code: String, options: FormattingOptions, lineSeparator: String): String {
+  private fun prettyPrint(code: String, options: FormattingOptions, range: Range<Int>?, lineSeparator: String): String {
     val file = Parser.parse(code)
     val kotlinInput = KotlinInput(code, file)
     val javaOutput =
@@ -127,9 +87,14 @@ object Formatter {
     doc.computeBreaks(javaOutput.commentsHelper, options.maxWidth, Doc.State(+0, 0))
     doc.write(javaOutput)
     javaOutput.flush()
+    
+    val rangeSet = ImmutableList.of(
+      if (range != null) range
+      else Range.closedOpen(0, code.length)
+    )
 
     val tokenRangeSet =
-        kotlinInput.characterRangesToTokenRanges(ImmutableList.of(Range.closedOpen(0, code.length)))
+        kotlinInput.characterRangesToTokenRanges(rangeSet)
     return WhitespaceTombstones.replaceTombstoneWithTrailingWhitespace(
         JavaOutput.applyReplacements(code, javaOutput.getFormatReplacements(tokenRangeSet)))
   }
